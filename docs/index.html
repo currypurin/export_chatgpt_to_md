@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ChatGPT to Markdown Converter</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      max-width: 600px;
+      margin: 40px auto;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    h1 { font-size: 1.5rem; margin-bottom: 1rem; }
+    .drop-zone {
+      border: 2px dashed #ccc;
+      border-radius: 8px;
+      padding: 40px 20px;
+      text-align: center;
+      margin-bottom: 20px;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .drop-zone.dragover {
+      border-color: #007bff;
+      background: #f0f7ff;
+    }
+    .drop-zone input[type="file"] { display: none; }
+    .drop-zone label {
+      cursor: pointer;
+      color: #007bff;
+      text-decoration: underline;
+    }
+    .options { margin-bottom: 20px; }
+    .options label { margin-right: 20px; cursor: pointer; }
+    button {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    button:hover:not(:disabled) { background: #0056b3; }
+    #status {
+      margin-top: 20px;
+      padding: 12px;
+      border-radius: 6px;
+      display: none;
+    }
+    #status.success { display: block; background: #d4edda; color: #155724; }
+    #status.error { display: block; background: #f8d7da; color: #721c24; }
+    #status.info { display: block; background: #e2e3e5; color: #383d41; }
+    .file-name { margin-top: 10px; font-size: 0.9rem; color: #666; }
+  </style>
+</head>
+<body>
+  <h1>ChatGPT to Markdown Converter</h1>
+  <p>ChatGPTの公式エクスポート（conversations.json）をMarkdownに変換します。</p>
+
+  <div class="drop-zone" id="dropZone">
+    <p>ファイルをドラッグ&ドロップ<br>または<br><label for="fileInput">ファイルを選択</label></p>
+    <input type="file" id="fileInput" accept=".json">
+    <div class="file-name" id="fileName"></div>
+  </div>
+
+  <div class="options">
+    <strong>出力モード:</strong><br>
+    <label><input type="radio" name="mode" value="per_month" checked> 月ごとにまとめる (per_month)</label><br>
+    <label><input type="radio" name="mode" value="per_chat"> 会話ごとに分割 (per_chat)</label>
+  </div>
+
+  <button id="convertBtn" disabled>変換してダウンロード</button>
+  <div id="status"></div>
+
+  <script>
+    let conversationsData = null;
+
+    // ===== Utility Functions (ported from Python) =====
+
+    function safeFilename(name, maxLen = 120) {
+      name = (name || '').trim() || 'untitled';
+      name = name.replace(/[\\/:*?"<>|]/g, '_');
+      name = name.replace(/\s+/g, ' ').trim();
+      if (name.length > maxLen) {
+        name = name.substring(0, maxLen).trimEnd();
+      }
+      return name;
+    }
+
+    function tsToIso(ts) {
+      if (ts == null) return null;
+      try {
+        const dt = new Date(parseFloat(ts) * 1000);
+        return dt.toISOString();
+      } catch {
+        return null;
+      }
+    }
+
+    function extractLinearMessages(conv) {
+      const mapping = conv.mapping || {};
+      let current = conv.current_node;
+      const chain = [];
+      const seen = new Set();
+
+      while (current && mapping[current] && !seen.has(current)) {
+        seen.add(current);
+        const node = mapping[current];
+        const msg = node.message;
+        if (msg) {
+          const author = msg.author?.role;
+          const content = msg.content || {};
+          const parts = content.parts || [];
+          const text = parts.filter(p => typeof p === 'string').join('\n').trim();
+          if ((author === 'user' || author === 'assistant') && text) {
+            chain.push({
+              role: author,
+              text: text,
+              create_time: tsToIso(msg.create_time)
+            });
+          }
+        }
+        current = node.parent;
+      }
+
+      chain.reverse();
+      return chain;
+    }
+
+    function renderConvToMd(conv) {
+      const title = conv.title || 'Untitled';
+      const cid = conv.id || '';
+      const created = tsToIso(conv.create_time);
+      const updated = tsToIso(conv.update_time);
+      const msgs = extractLinearMessages(conv);
+
+      const lines = [];
+      lines.push('---');
+      lines.push(`title: "${title.replace(/"/g, '\\"')}"`);
+      if (cid) lines.push(`chatgpt_conversation_id: "${cid}"`);
+      if (created) lines.push(`created_utc: ${created}`);
+      if (updated) lines.push(`updated_utc: ${updated}`);
+      lines.push('---');
+      lines.push(`# ${title}`);
+
+      const meta = [];
+      if (created) meta.push(`- Created (UTC): ${created}`);
+      if (updated) meta.push(`- Updated (UTC): ${updated}`);
+      if (meta.length) lines.push(meta.join('\n'));
+      lines.push('\n---\n');
+
+      for (const m of msgs) {
+        const role = m.role === 'user' ? 'User' : 'Assistant';
+        lines.push(`## ${role}`);
+        if (m.create_time) lines.push(`*Time (UTC): ${m.create_time}*`);
+        lines.push('');
+        lines.push(m.text);
+        lines.push('\n');
+      }
+
+      return lines.join('\n').trimEnd() + '\n';
+    }
+
+    function loadConversations(data) {
+      if (Array.isArray(data)) return data;
+      if (data && Array.isArray(data.conversations)) return data.conversations;
+      throw new Error('Unsupported conversations.json structure');
+    }
+
+    // ===== File Handling =====
+
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const fileNameDiv = document.getElementById('fileName');
+    const convertBtn = document.getElementById('convertBtn');
+    const statusDiv = document.getElementById('status');
+
+    function handleFile(file) {
+      if (!file) return;
+      fileNameDiv.textContent = `選択: ${file.name}`;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const json = JSON.parse(e.target.result);
+          conversationsData = loadConversations(json);
+          convertBtn.disabled = false;
+          showStatus(`${conversationsData.length}件の会話を読み込みました`, 'success');
+        } catch (err) {
+          conversationsData = null;
+          convertBtn.disabled = true;
+          showStatus(`エラー: ${err.message}`, 'error');
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    fileInput.addEventListener('change', (e) => handleFile(e.target.files[0]));
+
+    dropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropZone.classList.add('dragover');
+    });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('dragover');
+      handleFile(e.dataTransfer.files[0]);
+    });
+
+    function showStatus(message, type) {
+      statusDiv.textContent = message;
+      statusDiv.className = type;
+    }
+
+    // ===== Conversion & Download =====
+
+    convertBtn.addEventListener('click', async () => {
+      if (!conversationsData) return;
+
+      const mode = document.querySelector('input[name="mode"]:checked').value;
+      convertBtn.disabled = true;
+      showStatus('変換中...', 'info');
+
+      try {
+        const zip = new JSZip();
+
+        if (mode === 'per_chat') {
+          for (const conv of conversationsData) {
+            const title = safeFilename(conv.title || 'Untitled');
+            const created = tsToIso(conv.create_time) || 'unknown';
+            const datePrefix = created !== 'unknown' ? created.substring(0, 10).replace(/-/g, '') : 'unknown';
+            const cid = conv.id || '';
+            const fn = safeFilename(`${datePrefix}_${title}_${cid.substring(0, 8)}`) + '.md';
+            zip.file(fn, renderConvToMd(conv));
+          }
+        } else {
+          // per_month
+          const buckets = {};
+          for (const conv of conversationsData) {
+            const created = tsToIso(conv.create_time);
+            const ym = created ? created.substring(0, 7) : 'unknown-month';
+            if (!buckets[ym]) buckets[ym] = [];
+            buckets[ym].push(conv);
+          }
+
+          const sortedYMs = Object.keys(buckets).sort();
+          for (const ym of sortedYMs) {
+            const items = buckets[ym];
+            const lines = [];
+            lines.push(`# ChatGPT Export Bundle: ${ym}`);
+            lines.push('\n---\n');
+
+            items.sort((a, b) => {
+              const ta = a.create_time != null ? parseFloat(a.create_time) : 0;
+              const tb = b.create_time != null ? parseFloat(b.create_time) : 0;
+              return ta - tb;
+            });
+
+            for (const conv of items) {
+              lines.push(renderConvToMd(conv));
+              lines.push('\n\n');
+            }
+
+            const fn = safeFilename(`${ym}_chatgpt_bundle`) + '.md';
+            zip.file(fn, lines.join('\n').trimEnd() + '\n');
+          }
+        }
+
+        const blob = await zip.generateAsync({ type: 'blob' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `chatgpt_md_${mode}.zip`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        showStatus('変換完了！ZIPファイルがダウンロードされました。', 'success');
+      } catch (err) {
+        showStatus(`エラー: ${err.message}`, 'error');
+      } finally {
+        convertBtn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

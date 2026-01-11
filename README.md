@@ -1,15 +1,16 @@
-# export_chatgpt_to_md.py
+# ChatGPT to Markdown Converter
 
-ChatGPTの **公式データエクスポート（conversations.json）** を、検索・保管しやすい **Markdown（.md）** に変換するスクリプトです。
+ChatGPTの **公式データエクスポート（conversations.json）** を、検索・保管しやすい **Markdown（.md）** に変換するWebアプリです。
+
+> このプロジェクトは [pawaramorucha819/export_chatgpt_to_md](https://github.com/pawaramorucha819/export_chatgpt_to_md) をフォークし、ブラウザで動作するよう作り直したものです。
 
 ## 特徴
 
-- ✅ ChatGPT公式エクスポートの `conversations.json` に対応
-- ✅ 変換モード
-  - `per_month`：**月ごと（YYYY-MM）**に束ねて出力
+- ブラウザで完結（データはサーバーに送信されません）
+- 変換モード
+  - `per_month`：月ごと（YYYY-MM）に束ねて出力
   - `per_chat`：会話ごとに1ファイルで出力
-- ✅ 出力は UTF-8 の Markdown
-- ✅ オフライン実行（外部API不要）
+- ZIPファイルでダウンロード
 
 ---
 
@@ -17,57 +18,36 @@ ChatGPTの **公式データエクスポート（conversations.json）** を、�
 
 ### 1) ChatGPTからデータをエクスポートする
 
-ChatGPTの設定から **Export data** を実行し、届いたZIPを解凍します。  
+ChatGPTの設定から **Export data** を実行し、届いたZIPを解凍します。
 解凍後、以下のファイルが含まれます：
 
 - `conversations.json`
 
-> ※ エクスポート方法のUIは変更される可能性があります。  
-> 必要に応じて「ChatGPT Export data」で検索してください。
-
----
-
 ### 2) 変換する
 
-```bash
-python export_chatgpt_to_md.py conversations.json --mode per_month -o out_md
-````
-
-> Windowsで `python` が通らない場合は `py` をお試しください：
-
-```powershell
-py .\export_chatgpt_to_md.py .\conversations.json --mode per_month -o .\out_md
-```
+1. [ChatGPT to Markdown Converter](https://currypurin.github.io/export_chatgpt_to_md/) にアクセス
+2. `conversations.json` をドラッグ&ドロップ、または「ファイルを選択」
+3. 出力モードを選択（per_month / per_chat）
+4. 「変換してダウンロード」をクリック
+5. ZIPファイルがダウンロードされる
 
 ---
 
-## コマンド例
+## 出力例
 
-### 月ごとにまとめて出力（おすすめ）
-
-```bash
-python export_chatgpt_to_md.py conversations.json --mode per_month -o out_md
-```
-
-出力例：
+### per_month（月ごとにまとめる）
 
 ```
-out_md/
+chatgpt_md_per_month.zip
   2025-12_chatgpt_bundle.md
   2026-01_chatgpt_bundle.md
   ...
 ```
 
-### 会話ごとに出力
-
-```bash
-python export_chatgpt_to_md.py conversations.json --mode per_chat -o out_md
-```
-
-出力例：
+### per_chat（会話ごとに分割）
 
 ```
-out_md/
+chatgpt_md_per_chat.zip
   20260103_MyTitle_ab12cd34.md
   20251230_OtherTitle_ef56gh78.md
   ...
@@ -75,67 +55,20 @@ out_md/
 
 ---
 
-## オプション
+## プライバシー
 
-|オプション|説明|例|
-|---|---|---|
-|`conversations_json`|入力ファイル（必須）|`conversations.json`|
-|`-o, --out`|出力ディレクトリ|`-o out_md`|
-|`--mode`|出力モード（`per_month` / `per_chat`）|`--mode per_chat`|
-
----
-
-## 制限事項 / 注意
-
-- ChatGPTのエクスポート形式は将来的に変更される可能性があります。
-    
-- 一部の会話はメッセージツリー構造の都合で、表示順の再現が完全でない場合があります。
-    
-- 変換結果に機密情報が含まれる場合があります。公開・共有時はご注意ください。
-    
+- すべての処理はブラウザ内で完結します
+- `conversations.json` のデータは外部に送信されません
+- 変換結果に機密情報が含まれる場合があります。公開・共有時はご注意ください
 
 ---
 
 ## 免責
+
 本ソフトウェアは MIT License の条件に基づき「現状のまま」提供され、いかなる保証もありません。利用により生じた損害について、著作者は責任を負いません。
-
----
-
-## 開発
-
-依存ライブラリはありません（Python標準ライブラリのみ）。
-
-動作確認の目安：
-
-- Python 3.10+ 推奨（3.11/3.12でもOK）
-    
-
----
-
-## コントリビュート
-
-Issue / PR 歓迎です。
 
 ---
 
 ## ライセンス
 
-MIT License（`LICENSE` を参照）
-
----
-
-## English (Short)
-
-Convert ChatGPT exported `conversations.json` into Markdown files.
-
-```bash
-python export_chatgpt_to_md.py conversations.json --mode per_month -o out_md
-```
-
-Modes:
-
-- `per_month`: bundle by `YYYY-MM`
-    
-- `per_chat`: one file per conversation
-    
-
+MIT License（`LICENCE` を参照）
