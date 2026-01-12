@@ -74,6 +74,7 @@
   <div class="options">
     <strong>出力モード:</strong><br>
     <label><input type="radio" name="mode" value="per_month" checked> 月ごとにまとめる (per_month)</label><br>
+    <label><input type="radio" name="mode" value="per_year"> 年ごとにまとめる (per_year)</label><br>
     <label><input type="radio" name="mode" value="per_chat"> 会話ごとに分割 (per_chat)</label>
   </div>
 
@@ -240,6 +241,37 @@
             const cid = conv.id || '';
             const fn = safeFilename(`${datePrefix}_${title}_${cid.substring(0, 8)}`) + '.md';
             zip.file(fn, renderConvToMd(conv));
+          }
+        } else if (mode === 'per_year') {
+          // per_year
+          const buckets = {};
+          for (const conv of conversationsData) {
+            const created = tsToIso(conv.create_time);
+            const year = created ? created.substring(0, 4) : 'unknown-year';
+            if (!buckets[year]) buckets[year] = [];
+            buckets[year].push(conv);
+          }
+
+          const sortedYears = Object.keys(buckets).sort();
+          for (const year of sortedYears) {
+            const items = buckets[year];
+            const lines = [];
+            lines.push(`# ChatGPT Export Bundle: ${year}`);
+            lines.push('\n---\n');
+
+            items.sort((a, b) => {
+              const ta = a.create_time != null ? parseFloat(a.create_time) : 0;
+              const tb = b.create_time != null ? parseFloat(b.create_time) : 0;
+              return ta - tb;
+            });
+
+            for (const conv of items) {
+              lines.push(renderConvToMd(conv));
+              lines.push('\n\n');
+            }
+
+            const fn = safeFilename(`${year}_chatgpt_bundle`) + '.md';
+            zip.file(fn, lines.join('\n').trimEnd() + '\n');
           }
         } else {
           // per_month
