@@ -9,12 +9,13 @@ ChatGPTの **公式データエクスポート（conversations.json）** を、�
 - ブラウザで完結（データはサーバーに送信されません）
 - 変換モード
   - `per_month`：月ごと（YYYY-MM）に束ねて出力
+  - `per_year`：年ごと（YYYY）に束ねて出力
   - `per_chat`：会話ごとに1ファイルで出力
 - ZIPファイルでダウンロード
 
----
-
 ## 使い方
+
+詳しい使い方は[こちらの記事](https://note.com/currypurin/n/n671c75f1eeb3)で説明しています。
 
 ### 1) ChatGPTからデータをエクスポートする
 
@@ -27,11 +28,9 @@ ChatGPTの設定から **Export data** を実行し、届いたZIPを解凍し�
 
 1. [ChatGPT to Markdown Converter](https://currypurin.github.io/export_chatgpt_to_md/) にアクセス
 2. `conversations.json` をドラッグ&ドロップ、または「ファイルを選択」
-3. 出力モードを選択（per_month / per_chat）
+3. 出力モードを選択（per_month / per_year / per_chat）
 4. 「変換してダウンロード」をクリック
 5. ZIPファイルがダウンロードされる
-
----
 
 ## 出力例
 
@@ -44,6 +43,15 @@ chatgpt_md_per_month.zip
   ...
 ```
 
+### per_year（年ごとにまとめる）
+
+```
+chatgpt_md_per_year.zip
+  2025_chatgpt_bundle.md
+  2026_chatgpt_bundle.md
+  ...
+```
+
 ### per_chat（会話ごとに分割）
 
 ```
@@ -53,21 +61,19 @@ chatgpt_md_per_chat.zip
   ...
 ```
 
----
-
 ## プライバシー
 
 - すべての処理はブラウザ内で完結します
 - `conversations.json` のデータは外部に送信されません
 - 変換結果に機密情報が含まれる場合があります。公開・共有時はご注意ください
 
----
+## ソースコード
+
+- [GitHub](https://github.com/currypurin/export_chatgpt_to_md)
 
 ## 免責
 
 本ソフトウェアは MIT License の条件に基づき「現状のまま」提供され、いかなる保証もありません。利用により生じた損害について、著作者は責任を負いません。
-
----
 
 ## ライセンス
 
